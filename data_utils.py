@@ -31,7 +31,7 @@ class TextConverter(object):
 
     @property
     def vocab_size(self):
-        return len(self.vocab)
+        return len(self.vocab) + 1
 
     def word_to_int(self, word):
         if word in self.word_to_int_table:
@@ -56,12 +56,12 @@ class TextConverter(object):
     def arr_to_text(self, arr):
         words = []
         for index in arr:
-            words.append(self.int_to_word_table[index])
+            words.append(self.int_to_word(index))
         return "".join(words)
 
 
 class TextData(data.Dataset):
-    def __init__(self, text_path, n_step, word_to_idx):
+    def __init__(self, text_path, n_step, arr_to_idx):
         self.n_step = n_step
 
         with open(text_path, 'r') as f:
@@ -70,7 +70,7 @@ class TextData(data.Dataset):
         num_seq = int(len(text) / n_step)
         self.num_seq = num_seq
         text = text[:num_seq * n_step]  # 截去最后不够长的部分
-        arr = word_to_idx(text)
+        arr = arr_to_idx(text)
         arr = arr.reshape((num_seq, -1))
         self.arr = torch.from_numpy(arr)
 
