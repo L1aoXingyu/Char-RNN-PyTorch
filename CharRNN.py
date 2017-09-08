@@ -26,5 +26,9 @@ class CharRNN(nn.Module):
         word_embed = self.word_to_vec(x)  # batch x len x embed
         word_embed = word_embed.permute(1, 0, 2)  # len x batch x embed
         out, h0 = self.rnn(word_embed, hs)  # len x batch x hidden
+        le, mb, hd = out.size()
+        out = out.view(le * mb, hd)
+        out = self.proj(out)
+        out = out.view(le, mb, -1)
         out = out.permute(1, 0, 2).contiguous()  # batch x len x hidden
         return out.view(-1, out.size(2)), h0

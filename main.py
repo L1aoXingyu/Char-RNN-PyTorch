@@ -26,12 +26,13 @@ def train_epoch(model, dataloader, criterion, optimizer):
             y = y.cuda()
         x, y = Variable(x), Variable(y)
         out, _ = model(x)
-        loss = criterion(out, y.view(-1))
+        batch_loss = criterion(out, y.view(-1))
         # 反向传播
         optimizer.zero_grad()
-        loss.backward()
+        batch_loss.backward()
+        nn.utils.clip_grad_norm(model.parameters(), 5)
         optimizer.step()
-        running_loss += loss.data[0]
+        running_loss += batch_loss.data[0]
         n_total += mb_size
     return running_loss / n_total
 
@@ -41,7 +42,7 @@ def train(n_epoch, model, dataloader, optimizer, criterion):
         print('{}/{}'.format(e + 1, n_epoch))
         loss = train_epoch(model, dataloader, criterion, optimizer)
         print('Loss: {}'.format(loss))
-        if (e + 1) % 10 == 0:
+        if (e + 1) % 100 == 0:
             if not os.path.exists('./checkpoints'):
                 os.mkdir('./checkpoints')
             torch.save(model.state_dict(),
@@ -57,13 +58,7 @@ def pick_top_n(preds, top_n=5):
     return c
 
 
-def sample(model,
-           checkpoint,
-           convert,
-           arr_to_text,
-           prime,
-           text_len=20,
-           save_path='./generate.txt'):
+def sample(model, checkpoint, convert, arr_to_text, prime, text_len=20):
     '''
     将载入好权重的模型读入，指定开始字符和长度进行生成，将生成的结果保存到txt文件中
     checkpoint: 载入的模型
@@ -72,6 +67,7 @@ def sample(model,
     text_len: 生成文本长度
     '''
     model.load_state_dict(torch.load(checkpoint))
+    model.eval()
     samples = [convert(c) for c in prime]
     input_txt = torch.LongTensor(samples).unsqueeze(0)
     if use_gpu:
@@ -97,16 +93,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--state', required=True, help='训练还是预测, train or eval')
     parser.add_argument('--txt', required=True, help='进行训练的txt文件')
-    parser.add_argument('--batch', default=32, type=int, help='训练的batch size')
-    parser.add_argument('--epoch', default=50, help='跑多少个epoch')
-    parser.add_argument('--len', default=10, type=int, help='输入模型的序列长度')
-    parser.add_argument('--max_vocab', default=500, type=int, help='最多存储的字符数目')
-    parser.add_argument('--embed', default=10, type=int, help='词向量的维度')
-    parser.add_argument('--hidden', default=128, type=int, help='RNN的输出维度')
+    parser.add_argument('--batch', default=128, type=int, help='训练的batch size')
+    parser.add_argument('--epoch', default=5000, type=int, help='跑多少个epoch')
+    parser.add_argument('--len', default=100, type=int, help='输入模型的序列长度')
+    parser.add_argument(
+        '--max_vocab', default=5000, type=int, help='最多存储的字符数目')
+    parser.add_argument('--embed', default=512, type=int, help='词向量的维度')
+    parser.add_argument('--hidden', default=512, type=int, help='RNN的输出维度')
     parser.add_argument('--n_layer', default=2, type=int, help='RNN的层数')
     parser.add_argument('--dropout', default=0.5, help='RNN中drop的概率')
-    parser.add_argument('--begin', default='我爱你', help='给出生成文本的开始')
-    parser.add_argument('--pred_len', default=20, help='生成文本的长度')
+    parser.add_argument('--begin', default='我', help='给出生成文本的开始')
+    parser.add_argument('--pred_len', default=20, type=int, help='生成文本的长度')
     parser.add_argument('--checkpoint', help='载入模型的位置')
     opt = parser.parse_args()
     print(opt)
@@ -118,6 +115,7 @@ def main():
         model = model.cuda()
 
     if opt.state == 'train':
+        model.train()
         dataset = TextData(opt.txt, opt.len, convert.text_to_arr)
         dataloader = data.DataLoader(
             dataset, opt.batch, shuffle=True, num_workers=4)
@@ -129,6 +127,9 @@ def main():
         pred_text = sample(model, opt.checkpoint, convert.word_to_int,
                            convert.arr_to_text, opt.begin, opt.pred_len)
         print(pred_text)
+        with open('./generate.txt', 'a') as f:
+            f.write(pred_text)
+            f.write('\n')
     else:
         print('Error state, must choose from train and eval!')
 
