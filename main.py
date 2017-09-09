@@ -40,8 +40,9 @@ def train_epoch(model, dataloader, criterion, optimizer):
 def train(n_epoch, model, dataloader, optimizer, criterion):
     for e in range(n_epoch):
         print('{}/{}'.format(e + 1, n_epoch))
+        since = time.time()
         loss = train_epoch(model, dataloader, criterion, optimizer)
-        print('Loss: {}'.format(loss))
+        print('Loss: {}, Time: {:.4f}'.format(loss, time.time() - since))
         if (e + 1) % 100 == 0:
             if not os.path.exists('./checkpoints'):
                 os.mkdir('./checkpoints')
@@ -111,6 +112,7 @@ def main():
     convert = TextConverter(opt.txt, max_vocab=opt.max_vocab)
     model = CharRNN(convert.vocab_size, opt.embed, opt.hidden, opt.n_layer,
                     opt.dropout)
+    model.load_state_dict(torch.load('./poetry_checkpoints/model_300.pth'))
     if use_gpu:
         model = model.cuda()
 
@@ -119,7 +121,7 @@ def main():
         dataset = TextData(opt.txt, opt.len, convert.text_to_arr)
         dataloader = data.DataLoader(
             dataset, opt.batch, shuffle=True, num_workers=4)
-        optimizer = optim.Adam(model.parameters())
+        optimizer = optim.Adam(model.parameters(), lr=1e-4)
         criterion = nn.CrossEntropyLoss(size_average=False)
         train(opt.epoch, model, dataloader, optimizer, criterion)
 
