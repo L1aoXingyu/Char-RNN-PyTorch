@@ -7,6 +7,8 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
+from config import opt
+
 
 class CharRNN(nn.Module):
     def __init__(self, num_classes, embed_dim, hidden_size, num_layers,
@@ -24,8 +26,8 @@ class CharRNN(nn.Module):
         if hs is None:
             hs = Variable(
                 torch.zeros(self.num_layers, batch, self.hidden_size))
-            if torch.cuda.is_available():
-                hs = hs.cuda()
+            if opt.use_gpu:
+                hs = hs.cuda(opt.ctx)
         word_embed = self.word_to_vec(x)  # (batch, len, embed)
         word_embed = word_embed.permute(1, 0, 2)  # (len, batch, embed)
         out, h0 = self.rnn(word_embed, hs)  # (len, batch, hidden)

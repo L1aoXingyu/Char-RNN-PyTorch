@@ -70,7 +70,7 @@ class TextDataset(object):
     def __init__(self, text_path, n_step, arr_to_idx):
 
         with open(text_path, 'r') as f:
-            content = f.readline()
+            content = f.readlines()
         text = [v for s in content for v in s]
         num_seq = int(len(text) / n_step)
         self.num_seq = num_seq

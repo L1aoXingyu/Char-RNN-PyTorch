@@ -6,10 +6,11 @@
 import numpy as np
 import torch
 from mxtorch import meter
-from mxtorch.trainer import Trainer
+from mxtorch.trainer import Trainer, ScheduledOptim
 from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 import models
 from config import opt
@@ -20,7 +21,7 @@ convert = TextConverter(opt.txt, max_vocab=opt.max_vocab)
 
 def get_data():
     dataset = TextDataset(opt.txt, opt.len, convert.text_to_arr)
-    return DataLoader(dataset, opt.batch_size, shuffle=True, num_workers=4)
+    return DataLoader(dataset, opt.batch_size, shuffle=True, num_workers=opt.num_workers)
 
 
 def get_model(num_classes=convert.vocab_size, embed_dim=512, hidden_size=512, num_layers=2, dropout=0.5):
@@ -30,13 +31,13 @@ def get_model(num_classes=convert.vocab_size, embed_dim=512, hidden_size=512, nu
     return model
 
 
-def get_criterion():
-    return nn.CrossEntropyLoss(size_average=False)
+def get_loss(score, label):
+    return nn.CrossEntropyLoss()(score, label.view(-1))
 
 
 def get_optimizer(model):
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    return optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+    return ScheduledOptim(optimizer)
 
 
 def pick_top_n(preds, top_n=5):
@@ -50,15 +51,15 @@ def pick_top_n(preds, top_n=5):
 
 class CharRNNTrainer(Trainer):
     def __init__(self):
-        model = get_model(opt.num_classes, opt.embed_dim, opt.hidden_size, opt.num_layers)
-        criterion = get_criterion()
+        model = get_model()
+        criterion = get_loss
         optimizer = get_optimizer(model)
         super().__init__(model, criterion, optimizer)
 
         self.metric_meter['loss'] = meter.AverageValueMeter()
 
     def train(self, train_data):
-        for data in train_data:
+        for data in tqdm(train_data):
             x, y = data
             y = y.long()
             if opt.use_gpu:
@@ -68,7 +69,7 @@ class CharRNNTrainer(Trainer):
 
             # Forward.
             score, _ = self.model(x)
-            loss = self.criterion(score, y.view(-1))
+            loss = self.criterion(score, y)
 
             # Backward.
             self.optimizer.zero_grad()
@@ -88,6 +89,7 @@ class CharRNNTrainer(Trainer):
 
         # Log the train metrics to dict.
         self.metric_log['train loss'] = self.metric_meter['loss'].value()[0]
+        self.metric_log['perplexity'] = np.exp(self.metric_meter['loss'].value()[0])
 
     def load_state_dict(self, checkpoints):
         self.model.load_state_dict(torch.load(checkpoints))

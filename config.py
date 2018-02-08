@@ -11,7 +11,7 @@ class DefaultConfig(object):
     model = 'CharRNN'
 
     # Dataset.
-    txt = 'jay.txt'
+    txt = './dataset/jay.txt'
     len = 100
     max_vocab = 5000
     # Store result and save models.
@@ -28,8 +28,8 @@ class DefaultConfig(object):
     ctx = 0  # running on which cuda device
     batch_size = 128  # batch size
     num_workers = 4  # how many workers for loading data
-    max_epoch = 5000
-    lr = 1e-4  # initial learning rate
+    max_epoch = 100
+    lr = 1e-3  # initial learning rate
     lr_decay = 0.95
     # lr_decay_freq = 10
     weight_decay = 1e-4
