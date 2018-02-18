@@ -50,7 +50,7 @@ python main.py train \
 ```bash
 python main.py predict \
 	--begin='天青色等烟雨' \ # 生成文本的开始，可以是一个字符，也可以一段话
-	--pred_len=100 \ # 希望生成文本的长度
+	--predict_len=100 \ # 希望生成文本的长度
 	--load_model='./checkpoints/CharRNN_best_model.pth' # 读取训练模型的位置
 ```
 
