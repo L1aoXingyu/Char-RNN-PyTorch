@@ -8,7 +8,6 @@ This file is utils to convert text to index and create dataset to PyTorch traini
 
 import numpy as np
 import torch
-from torch.utils import data
 
 
 class TextConverter(object):
@@ -22,9 +21,7 @@ class TextConverter(object):
 
         with open(text_path, 'r') as f:
             text = f.read()
-        text = text.replace('\n', ' ').replace('\r', ' ').replace('，',
-                                                                  ' ').replace(
-                                                                      '。', ' ')
+        text = text.replace('\n', ' ').replace('\r', ' ').replace('，', ' ').replace('。', ' ')
         vocab = set(text)
         # If the number of words is larger than limit, clip the words with minimum frequency.
         vocab_count = {}
@@ -60,7 +57,7 @@ class TextConverter(object):
         elif index < len(self.vocab):
             return self.int_to_word_table[index]
         else:
-            raise Exception('Unknow index!')
+            raise Exception('Unknown index!')
 
     def text_to_arr(self, text):
         arr = []
@@ -75,25 +72,24 @@ class TextConverter(object):
         return "".join(words)
 
 
-class TextData(data.Dataset):
+class TextDataset(object):
     def __init__(self, text_path, n_step, arr_to_idx):
-        self.n_step = n_step
 
         with open(text_path, 'r') as f:
             text = f.read()
-        text = text.replace('\n', ' ').replace('\r', ' ').replace('，',
-                                                                  ' ').replace(
-                                                                      '。', ' ')
+        text = text.replace('\n', ' ').replace('\r', ' ').replace('，', ' ').replace('。', ' ')
         num_seq = int(len(text) / n_step)
         self.num_seq = num_seq
-        text = text[:num_seq * n_step]  # 截去最后不够长的部分
+        self.n_step = n_step
+        # Clip more than maximum length.
+        text = text[:num_seq * n_step]
         arr = arr_to_idx(text)
         arr = arr.reshape((num_seq, -1))
         self.arr = torch.from_numpy(arr)
 
-    def __getitem__(self, index):
-        x = self.arr[index, :]
-        y = torch.zeros(x.size())
+    def __getitem__(self, item):
+        x = self.arr[item, :]
+        y = torch.zeros(x.shape)
         y[:-1], y[-1] = x[1:], x[0]
         return x, y
 
