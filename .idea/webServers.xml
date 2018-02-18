@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="01a9a903-ea24-4c6a-9bc4-b6d56af7cd98" name="langchao" url="http://test@117.68.183.240">
+        <fileTransfer host="test@117.68.183.240" port="9989" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="9989" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

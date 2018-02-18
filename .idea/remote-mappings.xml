@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@ssh://ubuntu@54.191.111.67:22/home/ubuntu/anaconda3/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/ubuntu/char_rnn" />
+            </list>
+          </settings>
+        </remote-mappings>
+        <remote-mappings server-id="python@ssh://test@60.168.200.58:9989/home/test/anaconda3/envs/mx/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/test/sherlock/char_rnn" />
+            </list>
+          </settings>
+        </remote-mappings>
+        <remote-mappings server-id="python@ssh://test@117.68.183.69:9989/home/test/anaconda3/envs/mx/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$/../../../Documents/Char-RNN-PyTorch" remote-root="/home/test/sherlock/char_rnn" />
+            </list>
+          </settings>
+        </remote-mappings>
+        <remote-mappings server-id="python@ssh://test@117.68.182.140:9989/home/test/anaconda3/envs/mx/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/test/sherlock/char_rnn" />
+            </list>
+          </settings>
+        </remote-mappings>
+        <remote-mappings server-id="python@ssh://test@117.68.183.240:9989/home/test/anaconda3/envs/mx/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/home/test/sherlock/char_rnn" />
+            </list>
+          </settings>
+        </remote-mappings>
+      </list>
+    </list>
+  </component>
+</project>

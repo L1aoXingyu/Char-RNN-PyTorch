@@ -57,8 +57,10 @@ class DefaultConfig(object):
         print('============end===============')
 
     def _state_dict(self):
-        return {k: getattr(self, k) for k, _ in DefaultConfig.__dict__.items()
-                if not k.startswith('_')}
+        return {
+            k: getattr(self, k)
+            for k, _ in DefaultConfig.__dict__.items() if not k.startswith('_')
+        }
 
 
 opt = DefaultConfig()
