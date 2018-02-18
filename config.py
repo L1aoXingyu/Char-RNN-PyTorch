@@ -11,27 +11,39 @@ class DefaultConfig(object):
     model = 'CharRNN'
 
     # Dataset.
-    txt = './dataset/jay.txt'
-    len = 100
-    max_vocab = 5000
+    txt = './dataset/poetry.txt'
+    len = 20
+    max_vocab = 8000
+    begin = '天青色等烟雨'  # begin word of text
+    predict_len = 50  # predict length
+
     # Store result and save models.
-    # result_file = 'test.txt'
-    # save_file = './checkpoints/'
+    result_file = 'result.txt'
+    save_file = './checkpoints/'
     save_freq = 30  # save model every N epochs
+    save_best = True
+
+    # Predict mode and generate contexts
+    load_model = './checkpoints/CharRNN_best_model.pth'
+    write_file = './write_context.txt'
 
     # Visualization parameters.
-    # vis_dir = './test_vis/'
+    vis_dir = './vis/'
     plot_freq = 100  # plot in tensorboard every N iterations
+
+    # Model parameters.
+    embed_dim = 512
+    hidden_size = 512
+    num_layers = 2
+    dropout = 0.5
 
     # Model hyperparameters.
     use_gpu = True  # use GPU or not
     ctx = 0  # running on which cuda device
     batch_size = 128  # batch size
     num_workers = 4  # how many workers for loading data
-    max_epoch = 100
+    max_epoch = 200
     lr = 1e-3  # initial learning rate
-    lr_decay = 0.95
-    # lr_decay_freq = 10
     weight_decay = 1e-4
 
     def _parse(self, kwargs):

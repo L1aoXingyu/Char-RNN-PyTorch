@@ -3,7 +3,7 @@
 @author: xyliao
 @contact: xyliao1993@qq.com
 
-This is the document of the file.
+This file is utils to convert text to index and create dataset to PyTorch training model.
 """
 
 import numpy as np
@@ -12,16 +12,22 @@ import torch
 
 class TextConverter(object):
     def __init__(self, text_path, max_vocab=5000):
-        with open(text_path, 'r') as f:
-            text_file = f.readlines()
-        word_list = [v for s in text_file for v in s]
-        vocab = set(word_list)
+        """Construct a text index converter.
 
+        Args:
+            text_path: txt file path.
+            max_vocab: maximum number of words.
+        """
+
+        with open(text_path, 'r') as f:
+            text = f.read()
+        text = text.replace('\n', ' ').replace('\r', ' ').replace('，', ' ').replace('。', ' ')
+        vocab = set(text)
         # If the number of words is larger than limit, clip the words with minimum frequency.
         vocab_count = {}
         for word in vocab:
             vocab_count[word] = 0
-        for word in word_list:
+        for word in text:
             vocab_count[word] += 1
         vocab_count_list = []
         for word in vocab_count:
@@ -70,8 +76,8 @@ class TextDataset(object):
     def __init__(self, text_path, n_step, arr_to_idx):
 
         with open(text_path, 'r') as f:
-            content = f.readlines()
-        text = [v for s in content for v in s]
+            text = f.read()
+        text = text.replace('\n', ' ').replace('\r', ' ').replace('，', ' ').replace('。', ' ')
         num_seq = int(len(text) / n_step)
         self.num_seq = num_seq
         self.n_step = n_step

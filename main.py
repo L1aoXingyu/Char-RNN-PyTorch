@@ -3,6 +3,8 @@
 @author: xyliao
 @contact: xyliao1993@qq.com
 """
+from copy import deepcopy
+
 import numpy as np
 import torch
 from mxtorch import meter
@@ -14,20 +16,22 @@ from tqdm import tqdm
 
 import models
 from config import opt
-from data import TextConverter, TextDataset
-
-convert = TextConverter(opt.txt, max_vocab=opt.max_vocab)
+from data import TextDataset, TextConverter
 
 
-def get_data():
+def get_data(convert):
     dataset = TextDataset(opt.txt, opt.len, convert.text_to_arr)
     return DataLoader(dataset, opt.batch_size, shuffle=True, num_workers=opt.num_workers)
 
 
-def get_model(num_classes=convert.vocab_size, embed_dim=512, hidden_size=512, num_layers=2, dropout=0.5):
-    model = getattr(models, opt.model)(num_classes, embed_dim, hidden_size, num_layers, dropout)
+def get_model(convert):
+    model = getattr(models, opt.model)(convert.vocab_size,
+                                       opt.embed_dim,
+                                       opt.hidden_size,
+                                       opt.num_layers,
+                                       opt.dropout)
     if opt.use_gpu:
-        model = model.cuda(opt.ctx)
+        model = model.cuda()
     return model
 
 
@@ -50,21 +54,28 @@ def pick_top_n(preds, top_n=5):
 
 
 class CharRNNTrainer(Trainer):
-    def __init__(self):
-        model = get_model()
+    def __init__(self, convert):
+        self.convert = convert
+
+        model = get_model(convert)
         criterion = get_loss
         optimizer = get_optimizer(model)
         super().__init__(model, criterion, optimizer)
+        self.config += ('text: ' + opt.txt + '\n' + 'train text length: ' + str(opt.len) + '\n')
+        self.config += ('predict text length: ' + str(opt.predict_len) + '\n')
 
         self.metric_meter['loss'] = meter.AverageValueMeter()
 
-    def train(self, train_data):
+    def train(self, kwargs):
+        self.reset_meter()
+        self.model.train()
+        train_data = kwargs['train_data']
         for data in tqdm(train_data):
             x, y = data
             y = y.long()
             if opt.use_gpu:
-                x = x.cuda(opt.ctx)
-                y = y.cuda(opt.ctx)
+                x = x.cuda()
+                y = y.cuda()
             x, y = Variable(x), Variable(y)
 
             # Forward.
@@ -81,34 +92,29 @@ class CharRNNTrainer(Trainer):
             self.metric_meter['loss'].add(loss.data[0])
 
             # Update to tensorboard.
-            # if (self.n_iter + 1) % opt.print_freq == 0:
-            #     self.writer.add_scalar('loss', self.metric_meter['loss'].value()[0], self.n_plot)
-            #     self.n_plot += 1
+            if (self.n_iter + 1) % opt.plot_freq == 0:
+                self.writer.add_scalar('perplexity', np.exp(self.metric_meter['loss'].value()[0]), self.n_plot)
+                self.n_plot += 1
 
             self.n_iter += 1
 
         # Log the train metrics to dict.
-        self.metric_log['train loss'] = self.metric_meter['loss'].value()[0]
         self.metric_log['perplexity'] = np.exp(self.metric_meter['loss'].value()[0])
 
-    def load_state_dict(self, checkpoints):
-        self.model.load_state_dict(torch.load(checkpoints))
-
-    def predict(self, begin, text_len=20):
-        """Set beginning word and predicted length, using model to generate texts.
-
-        Args:
-            begin (torch.LongTensor): index of begin words, shape is :math:`[1, len]`
-            text_len (int): length of generate text
+    def test(self, kwargs):
+        """Set beginning words and predicted length, using model to generate texts.
 
         Returns:
-
+            predicted generating text
         """
         self.model.eval()
-        samples = [convert(c) for c in begin]
+        begin = np.array([i for i in kwargs['begin']])
+        begin = np.random.choice(begin, size=1)
+        text_len = kwargs['predict_len']
+        samples = [self.convert.word_to_int(c) for c in begin]
         input_txt = torch.LongTensor(samples)[None]
         if opt.use_gpu:
-            input_txt = input_txt.cuda(opt.ctx)
+            input_txt = input_txt.cuda()
         input_txt = Variable(input_txt)
         _, init_state = self.model(input_txt)
         result = samples
@@ -118,16 +124,64 @@ class CharRNNTrainer(Trainer):
             pred = pick_top_n(out.data)
             model_input = Variable(torch.LongTensor(pred))[None]
             if opt.use_gpu:
-                model_input = model_input.cuda(opt.ctx)
+                model_input = model_input.cuda()
             result.append(pred[0])
-        return result
+
+        # Update generating txt to tensorboard.
+        self.writer.add_text('text', self.convert.arr_to_text(result), self.n_plot)
+        self.n_plot += 1
+        print(self.convert.arr_to_text(result))
+
+    def predict(self, begin, predict_len):
+        self.model.eval()
+        samples = [self.convert.word_to_int(c) for c in begin]
+        input_txt = torch.LongTensor(samples)[None]
+        if opt.use_gpu:
+            input_txt = input_txt.cuda()
+        input_txt = Variable(input_txt)
+        _, init_state = self.model(input_txt)
+        result = samples
+        model_input = input_txt[:, -1][:, None]
+        for i in range(predict_len):
+            out, init_state = self.model(model_input, init_state)
+            pred = pick_top_n(out.data)
+            model_input = Variable(torch.LongTensor(pred))[None]
+            if opt.use_gpu:
+                model_input = model_input.cuda()
+            result.append(pred[0])
+        text = self.convert.arr_to_text(result)
+        print('Generate text is: {}'.format(text))
+        with open(opt.write_file, 'a') as f:
+            f.write(text)
+
+    def load_state_dict(self, checkpoints):
+        self.model.load_state_dict(torch.load(checkpoints))
+
+    def get_best_model(self):
+        if self.metric_log['perplexity'] < self.best_metric:
+            self.best_model = deepcopy(self.model.state_dict())
+            self.best_metric = self.metric_log['perplexity']
 
 
 def train(**kwargs):
     opt._parse(kwargs)
-    train_data = get_data()
-    char_rnn_trainer = CharRNNTrainer()
-    char_rnn_trainer.fit(train_data)
+    torch.cuda.set_device(opt.ctx)
+    convert = TextConverter(opt.txt, max_vocab=opt.max_vocab)
+    train_data = get_data(convert)
+    char_rnn_trainer = CharRNNTrainer(convert)
+    char_rnn_trainer.fit(train_data=train_data,
+                         epochs=opt.max_epoch,
+                         begin=opt.begin,
+                         predict_len=opt.predict_len)
+
+
+def predict(**kwargs):
+    opt._parse(kwargs)
+    torch.cuda.set_device(opt.ctx)
+    convert = TextConverter(opt.txt, max_vocab=opt.max_vocab)
+    char_rnn_trainer = CharRNNTrainer(convert)
+    char_rnn_trainer.load_state_dict(opt.load_model)
+    char_rnn_trainer.predict(opt.begin, opt.predict_len)
 
 
 if __name__ == '__main__':
